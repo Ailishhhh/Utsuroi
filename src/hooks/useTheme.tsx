@@ -6,15 +6,23 @@
  *   that preference is 'system', the OS color scheme.
  * - Expose the theme + a setter to the whole app via React Context.
  *
- * Scope note: in M1.3 the chosen mode is held in memory only. M1.8 will extend this
- * provider to load the saved preference on mount and persist changes — the shape
- * (`mode` + `setMode`) is designed so that addition is purely additive.
+ * The chosen mode is persisted (M1.8): loaded from storage on mount and saved on
+ * every change, so a user's override survives app restarts.
  */
 
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useColorScheme } from 'react-native';
 
 import { themes, type ColorScheme, type Theme, type ThemeMode } from '@/constants/theme';
+import { getStoredThemeMode, setStoredThemeMode } from '@/lib/themeStorage';
 
 interface ThemeContextValue {
   /** The fully-resolved active theme (colors + fonts). */
@@ -23,8 +31,10 @@ interface ThemeContextValue {
   scheme: ColorScheme;
   /** The user's raw preference ('light' | 'dark' | 'system'). */
   mode: ThemeMode;
-  /** Update the preference. Persistence is layered on in M1.8. */
+  /** Update the preference and persist it. */
   setMode: (mode: ThemeMode) => void;
+  /** False until the saved preference has been loaded (used to gate the splash). */
+  isReady: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
@@ -41,7 +51,28 @@ interface ThemeProviderProps {
  */
 export function ThemeProvider({ children, initialMode = 'system' }: ThemeProviderProps) {
   const systemScheme = useColorScheme();
-  const [mode, setMode] = useState<ThemeMode>(initialMode);
+  const [mode, setModeState] = useState<ThemeMode>(initialMode);
+  const [isReady, setIsReady] = useState(false);
+
+  // Load the saved preference once on mount, then mark theme ready.
+  useEffect(() => {
+    getStoredThemeMode()
+      .then((stored) => {
+        if (stored) {
+          setModeState(stored);
+        }
+      })
+      .finally(() => {
+        setIsReady(true);
+      });
+  }, []);
+
+  // Update the preference in memory and persist it (fire-and-forget; storage errors
+  // are handled inside setStoredThemeMode and never block the UI).
+  const setMode = useCallback((next: ThemeMode) => {
+    setModeState(next);
+    void setStoredThemeMode(next);
+  }, []);
 
   // useColorScheme() can return 'light' | 'dark' | 'unspecified' | null; anything
   // that isn't explicitly 'dark' resolves to our default light scheme.
@@ -51,8 +82,8 @@ export function ThemeProvider({ children, initialMode = 'system' }: ThemeProvide
   const scheme: ColorScheme = mode === 'system' ? resolvedSystemScheme : mode;
 
   const value = useMemo<ThemeContextValue>(
-    () => ({ theme: themes[scheme], scheme, mode, setMode }),
-    [scheme, mode]
+    () => ({ theme: themes[scheme], scheme, mode, setMode, isReady }),
+    [scheme, mode, setMode, isReady]
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

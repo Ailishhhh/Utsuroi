@@ -13,8 +13,8 @@ import { useEffect } from 'react';
 import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
 
-// Keep the native splash visible until fonts AND the initial session check are ready,
-// so nothing flashes or "snaps" into place (motion rule).
+// Keep the native splash visible until fonts AND the initial session/theme checks are
+// ready, so nothing flashes or "snaps" into place (motion rule).
 SplashScreen.preventAutoHideAsync();
 
 /**
@@ -34,6 +34,7 @@ function ThemedStatusBar() {
  */
 function RootNavigator() {
   const { session, isLoading } = useAuth();
+  const { isReady: themeReady } = useTheme();
   const segments = useSegments();
   const router = useRouter();
 
@@ -47,12 +48,13 @@ function RootNavigator() {
     }
   }, [session, isLoading, segments, router]);
 
-  // Reveal the app only once we know whether there's a session.
+  // Reveal the app only once we know both the session and the saved theme, so we
+  // never flash the wrong screen or the wrong color scheme.
   useEffect(() => {
-    if (!isLoading) {
+    if (!isLoading && themeReady) {
       SplashScreen.hideAsync();
     }
-  }, [isLoading]);
+  }, [isLoading, themeReady]);
 
   return (
     <>

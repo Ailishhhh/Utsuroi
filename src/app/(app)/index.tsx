@@ -3,6 +3,7 @@ import { StyleSheet, Text } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { Theme } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
 import { useThemedStyles } from '@/hooks/useTheme';
@@ -27,6 +28,7 @@ export default function Home() {
   return (
     <PlaceholderScreen title="Utsuroi" subtitle="You're signed in. Home screen coming soon.">
       {session?.user.email ? <Text style={styles.email}>{session.user.email}</Text> : null}
+      <ThemeToggle />
       <Button label="Sign out" variant="outline" onPress={handleSignOut} loading={signingOut} />
     </PlaceholderScreen>
   );
