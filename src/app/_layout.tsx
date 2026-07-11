@@ -11,10 +11,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
-// Side-effect import: validates required env vars at startup and throws a clear,
-// named error if any are missing (see src/lib/config.ts). M1.6's supabase client
-// imports config directly, so this keeps startup failing fast until then.
-import '@/lib/config';
+// Importing the supabase client also imports config (M1.5), so required env vars are
+// validated at startup and a misconfig fails fast right here.
+import { supabase } from '@/lib/supabase';
 
 // Keep the native splash visible until fonts are ready, so no text renders in a
 // fallback font first (which would flash and then "snap" — against our motion rule).
@@ -45,6 +44,23 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded, fontError]);
+
+  // M1.6 connectivity check: confirm the app can reach Supabase at startup.
+  // TEMPORARY — the M1.7 AuthProvider will own the session and replace this.
+  useEffect(() => {
+    if (__DEV__) {
+      supabase.auth
+        .getSession()
+        .then(({ error }) => {
+          console.log(
+            error
+              ? `[supabase] getSession error: ${error.message}`
+              : '[supabase] connected — getSession resolved'
+          );
+        })
+        .catch((e: unknown) => console.log('[supabase] getSession threw:', e));
+    }
+  }, []);
 
   if (!fontsLoaded && !fontError) {
     return null; // Splash stays up.
