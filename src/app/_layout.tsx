@@ -11,6 +11,10 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
+// Side-effect import: validates required env vars at startup and throws a clear,
+// named error if any are missing (see src/lib/config.ts). M1.6's supabase client
+// imports config directly, so this keeps startup failing fast until then.
+import '@/lib/config';
 
 // Keep the native splash visible until fonts are ready, so no text renders in a
 // fallback font first (which would flash and then "snap" — against our motion rule).
