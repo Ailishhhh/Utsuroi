@@ -50,6 +50,8 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
       autoRefreshToken: true,
       // Native uses deep links for OAuth (handled in M1.7), not URL parsing.
       detectSessionInUrl: false,
+      // PKCE is required for the browser-based OAuth code-exchange flow (M1.7).
+      flowType: 'pkce',
       storage: isWeb ? undefined : SecureStoreAdapter,
     },
   }

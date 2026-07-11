@@ -5,18 +5,16 @@ import { Inter_500Medium } from '@expo-google-fonts/inter/500Medium';
 import { Inter_600SemiBold } from '@expo-google-fonts/inter/600SemiBold';
 import { Inter_700Bold } from '@expo-google-fonts/inter/700Bold';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 
+import { AuthProvider, useAuth } from '@/hooks/useAuth';
 import { ThemeProvider, useTheme } from '@/hooks/useTheme';
-// Importing the supabase client also imports config (M1.5), so required env vars are
-// validated at startup and a misconfig fails fast right here.
-import { supabase } from '@/lib/supabase';
 
-// Keep the native splash visible until fonts are ready, so no text renders in a
-// fallback font first (which would flash and then "snap" — against our motion rule).
+// Keep the native splash visible until fonts AND the initial session check are ready,
+// so nothing flashes or "snaps" into place (motion rule).
 SplashScreen.preventAutoHideAsync();
 
 /**
@@ -26,6 +24,42 @@ SplashScreen.preventAutoHideAsync();
 function ThemedStatusBar() {
   const { scheme } = useTheme();
   return <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />;
+}
+
+/**
+ * The auth gate. Redirects between the (auth) and (app) route groups based on session:
+ * - signed out + trying to view the app  -> send to /login
+ * - signed in  + sitting on an auth screen -> send to home
+ * Waits for the initial session lookup before deciding, to avoid a wrong-way flash.
+ */
+function RootNavigator() {
+  const { session, isLoading } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (isLoading) return;
+    const inAuthGroup = segments[0] === '(auth)';
+    if (!session && !inAuthGroup) {
+      router.replace('/login');
+    } else if (session && inAuthGroup) {
+      router.replace('/');
+    }
+  }, [session, isLoading, segments, router]);
+
+  // Reveal the app only once we know whether there's a session.
+  useEffect(() => {
+    if (!isLoading) {
+      SplashScreen.hideAsync();
+    }
+  }, [isLoading]);
+
+  return (
+    <>
+      <ThemedStatusBar />
+      <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+    </>
+  );
 }
 
 export default function RootLayout() {
@@ -38,38 +72,15 @@ export default function RootLayout() {
     Inter_700Bold,
   });
 
-  // Hide the splash once fonts are ready (or if loading failed, so we never hang).
-  useEffect(() => {
-    if (fontsLoaded || fontError) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, fontError]);
-
-  // M1.6 connectivity check: confirm the app can reach Supabase at startup.
-  // TEMPORARY — the M1.7 AuthProvider will own the session and replace this.
-  useEffect(() => {
-    if (__DEV__) {
-      supabase.auth
-        .getSession()
-        .then(({ error }) => {
-          console.log(
-            error
-              ? `[supabase] getSession error: ${error.message}`
-              : '[supabase] connected — getSession resolved'
-          );
-        })
-        .catch((e: unknown) => console.log('[supabase] getSession threw:', e));
-    }
-  }, []);
-
   if (!fontsLoaded && !fontError) {
-    return null; // Splash stays up.
+    return null; // Splash stays up until fonts are ready.
   }
 
   return (
     <ThemeProvider>
-      <ThemedStatusBar />
-      <Stack screenOptions={{ headerShown: false, animation: 'fade' }} />
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
     </ThemeProvider>
   );
 }

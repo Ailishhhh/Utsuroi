@@ -1,15 +1,46 @@
+import { StyleSheet, Text } from 'react-native';
+
+import { AuthForm } from '@/components/AuthForm';
+import { AuthScreen } from '@/components/AuthScreen';
 import { NavLink } from '@/components/NavLink';
-import { PlaceholderScreen } from '@/components/PlaceholderScreen';
+import type { Theme } from '@/constants/theme';
+import { useAuth } from '@/hooks/useAuth';
+import { useThemedStyles } from '@/hooks/useTheme';
 
 /**
- * Placeholder sign-in screen (route "/login"). Real email/password + Google auth
- * arrives in M1.7; for now it just proves navigation works.
+ * Sign-in screen. Thin: it wires the shared AuthForm to the auth actions and lets
+ * the AuthProvider's session listener handle navigation on success.
  */
 export default function Login() {
+  const { signInWithEmail, signInWithGoogle } = useAuth();
+  const styles = useThemedStyles(getStyles);
+
   return (
-    <PlaceholderScreen title="Welcome back" subtitle="Sign in — coming in M1.7.">
-      <NavLink href="/signup" label="Create an account" />
-      <NavLink href="/" label="Back to app" />
-    </PlaceholderScreen>
+    <AuthScreen
+      title="Welcome back"
+      subtitle="Sign in to continue."
+      footer={
+        <>
+          <Text style={styles.footerText}>New to Utsuroi?</Text>
+          <NavLink href="/signup" label="Create an account" />
+        </>
+      }
+    >
+      <AuthForm
+        mode="signin"
+        submitLabel="Sign in"
+        onSubmit={signInWithEmail}
+        onGoogle={signInWithGoogle}
+      />
+    </AuthScreen>
   );
 }
+
+const getStyles = (theme: Theme) =>
+  StyleSheet.create({
+    footerText: {
+      fontFamily: theme.fonts.body,
+      fontSize: 15,
+      color: theme.colors.textSecondary,
+    },
+  });
