@@ -5,13 +5,37 @@
  * so this is an intentionally empty placeholder that still satisfies the typing that
  * `createClient<Database>()` expects.
  *
- * Once we add real tables, REPLACE this file with generated types:
+ * As the schema grows we can switch to fully generated types:
  *     npx supabase gen types typescript --project-id <ref> > src/types/database.ts
- * That keeps our client types in sync with the actual schema automatically.
+ * For now the tables are hand-written to match the SQL migrations exactly.
  */
+import type { Character, CharacterProfile } from '@/types/character';
+
+/** Columns clients may set when inserting a character (seeding is done via SQL, but
+ *  the type documents the writable shape). Server-defaulted columns are optional. */
+type CharacterInsert = {
+  id?: string;
+  slug: string;
+  name: string;
+  essence: string;
+  category_tag: string;
+  persona_lean?: string | null;
+  sort_order?: number;
+  is_active?: boolean;
+  profile: CharacterProfile;
+  created_at?: string;
+};
+
 export interface Database {
   public: {
-    Tables: Record<string, never>;
+    Tables: {
+      characters: {
+        Row: Character;
+        Insert: CharacterInsert;
+        Update: Partial<CharacterInsert>;
+        Relationships: [];
+      };
+    };
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;
