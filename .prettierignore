@@ -6,3 +6,7 @@ android/
 ios/
 *.lock
 package-lock.json
+
+
+# Backend is a separate project with its own formatting
+server/

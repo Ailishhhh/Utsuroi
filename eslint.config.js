@@ -9,6 +9,7 @@ module.exports = defineConfig([
   expoConfig,
   eslintConfigPrettier,
   {
-    ignores: ['dist/*'],
+    // The backend (/server) is a separate project with its own tooling.
+    ignores: ['dist/*', 'server/**'],
   },
 ]);
