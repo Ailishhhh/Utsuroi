@@ -14,7 +14,7 @@
 
 import OpenAI from 'openai';
 
-import { getActiveProviderId, loadProviderConfig, type ProviderConfig } from './providers.ts';
+import { getActiveProviderId, loadProviderConfig, type ProviderConfig } from './providers';
 
 /** A single conversation turn. */
 export interface ChatMessage {

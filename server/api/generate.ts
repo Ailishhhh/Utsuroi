@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-import { generateReply, type ChatMessage } from '../src/ai/gateway.ts';
-import { bearerFromHeader, verifySupabaseToken } from '../src/auth.ts';
+import { generateReply, type ChatMessage } from '../src/ai/gateway';
+import { bearerFromHeader, verifySupabaseToken } from '../src/auth';
 
 /**
  * POST /api/generate — the AI Gateway's HTTP boundary.

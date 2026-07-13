@@ -11,7 +11,7 @@
  * is not required until the M2.5 fallback).
  */
 
-import { requireEnv } from '../env.ts';
+import { requireEnv } from '../env';
 
 export type ProviderId = 'bluesminds' | 'openrouter';
 

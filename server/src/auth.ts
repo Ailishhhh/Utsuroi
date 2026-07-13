@@ -8,7 +8,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-import { requireEnv } from './env.ts';
+import { requireEnv } from './env';
 
 export interface AuthedUser {
   userId: string;
