@@ -2,8 +2,7 @@
   "name": "utsuroi-server",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
-  "description": "Utsuroi backend — the boundary in front of the AI providers. Deployed as its own Vercel project (Root Directory: server).",
+  "description": "Utsuroi backend — the boundary in front of the AI providers. Deployed as its own Vercel project (Root Directory: server). CommonJS: Vercel runs functions under Node, and extensionless relative imports resolve under CJS (not native ESM).",
   "engines": {
     "node": "22.x"
   },
