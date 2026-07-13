@@ -14,5 +14,9 @@
     "@types/node": "^26.1.1",
     "@vercel/node": "^5.8.23",
     "typescript": "~5.9.2"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.110.2",
+    "openai": "^6.46.0"
   }
 }
