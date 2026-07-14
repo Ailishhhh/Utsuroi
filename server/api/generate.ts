@@ -1,7 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-import { generateReply, type ChatMessage } from '../src/ai/gateway';
+import { type ChatMessage } from '../src/ai/gateway';
 import { bearerFromHeader, verifySupabaseToken } from '../src/auth';
+import { generateSafeReply } from '../src/safety';
 
 /**
  * POST /api/generate — the AI Gateway's HTTP boundary.
@@ -35,10 +36,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // --- Generate ---
+  // --- Generate (through the safety wrapper — no path skips safety) ---
+  // NOTE: this raw endpoint is superseded by /api/chat and is retired in M2.9.
+  const lastUserMessage = [...body.messages].reverse().find((m) => m.role === 'user');
   try {
-    const result = await generateReply({ messages: body.messages });
-    res.status(200).json({ reply: result.text, provider: result.provider, model: result.model });
+    const outcome = await generateSafeReply(
+      { messages: body.messages },
+      { userText: lastUserMessage?.content ?? '' }
+    );
+    if (outcome.kind === 'crisis') {
+      res.status(200).json({ reply: outcome.text, safety: 'crisis', resources: outcome.resources });
+    } else {
+      res.status(200).json({ reply: outcome.text, provider: outcome.provider, model: outcome.model });
+    }
   } catch (error) {
     console.error('[generate] gateway error:', error);
     res.status(502).json({ error: 'The AI provider could not be reached. Please try again.' });
