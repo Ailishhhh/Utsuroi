@@ -1,7 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,23 +10,29 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Animated, { FadeInUp } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { CrisisMessage } from '@/components/CrisisMessage';
+import { DisclosureBanner } from '@/components/DisclosureBanner';
+import { TypingIndicator } from '@/components/TypingIndicator';
 import type { Theme } from '@/constants/theme';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
 import { sendMessage } from '@/services/chat';
+import type { CrisisResource } from '@/types/chat';
 
 interface UiMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  kind?: 'crisis';
+  resources?: CrisisResource[];
 }
 
 /**
- * Bare chat screen (M2.11a): functional send/receive against /api/chat. Message
- * history is session-local for now; loading persisted history and the visual polish
- * (bubble motion, typing pulse, AI-disclosure banner, distinct crisis surfacing) land
- * in M2.11b.
+ * Chat screen. Soft fade + upward drift on bubbles, an organic typing pulse, an
+ * AI-disclosure banner at session start, and distinct surfacing for crisis responses.
+ * Message history is session-local for now (loading persisted history is a follow-up).
  */
 export default function ChatScreen() {
   const { characterId, name } = useLocalSearchParams<{ characterId: string; name?: string }>();
@@ -39,6 +44,7 @@ export default function ChatScreen() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showDisclosure, setShowDisclosure] = useState(true);
   const scrollRef = useRef<ScrollView>(null);
 
   async function handleSend() {
@@ -57,9 +63,19 @@ export default function ChatScreen() {
       setError(result.error);
       return;
     }
+
+    const { reply, safety, resources } = result.data;
     setMessages((prev) => [
       ...prev,
-      { id: `a-${Date.now()}`, role: 'assistant', content: result.data.reply },
+      safety === 'crisis'
+        ? {
+            id: `a-${Date.now()}`,
+            role: 'assistant',
+            content: reply,
+            kind: 'crisis',
+            resources: resources ?? [],
+          }
+        : { id: `a-${Date.now()}`, role: 'assistant', content: reply },
     ]);
   }
 
@@ -74,6 +90,8 @@ export default function ChatScreen() {
         </Text>
         <View style={styles.headerSpacer} />
       </View>
+
+      {showDisclosure ? <DisclosureBanner onDismiss={() => setShowDisclosure(false)} /> : null}
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -91,22 +109,27 @@ export default function ChatScreen() {
           ) : null}
 
           {messages.map((m) => (
-            <View
-              key={m.id}
-              style={[
-                styles.bubble,
-                m.role === 'user' ? styles.userBubble : styles.assistantBubble,
-              ]}
-            >
-              <Text style={m.role === 'user' ? styles.userText : styles.assistantText}>
-                {m.content}
-              </Text>
-            </View>
+            <Animated.View key={m.id} entering={FadeInUp.duration(360)}>
+              {m.kind === 'crisis' ? (
+                <CrisisMessage text={m.content} resources={m.resources ?? []} />
+              ) : (
+                <View
+                  style={[
+                    styles.bubble,
+                    m.role === 'user' ? styles.userBubble : styles.assistantBubble,
+                  ]}
+                >
+                  <Text style={m.role === 'user' ? styles.userText : styles.assistantText}>
+                    {m.content}
+                  </Text>
+                </View>
+              )}
+            </Animated.View>
           ))}
 
           {sending ? (
             <View style={[styles.bubble, styles.assistantBubble]}>
-              <ActivityIndicator color={theme.colors.primary} />
+              <TypingIndicator />
             </View>
           ) : null}
 
