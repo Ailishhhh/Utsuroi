@@ -108,6 +108,7 @@ export async function maybeRefreshMemory(params: RefreshMemoryParams): Promise<v
     .from('messages')
     .select('role, content')
     .eq('conversation_id', conversationId)
+    .eq('flagged', false)
     .order('created_at', { ascending: false })
     .limit(40);
   const chronological = (recent ?? []).reverse();

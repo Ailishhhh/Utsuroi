@@ -54,6 +54,7 @@ export interface Database {
           user_id: string;
           role: 'user' | 'assistant';
           content: string;
+          flagged: boolean;
           created_at: Timestamptz;
         };
         Insert: {
@@ -62,9 +63,10 @@ export interface Database {
           user_id: string;
           role: 'user' | 'assistant';
           content: string;
+          flagged?: boolean;
           created_at?: Timestamptz;
         };
-        Update: Partial<{ content: string }>;
+        Update: Partial<{ content: string; flagged: boolean }>;
         Relationships: [];
       };
       memory_summaries: {

@@ -77,10 +77,13 @@ export async function handleChat(params: ChatParams): Promise<ChatResult | ChatF
   const memory = await getMemory(supabase, userId, characterId);
 
   // 4. Recent history (fetch newest N, then restore chronological order).
+  // Exclude flagged (crisis) turns from replay — they're stored but must not pollute
+  // normal conversational context.
   const { data: recent } = await supabase
     .from('messages')
     .select('role, content')
     .eq('conversation_id', conversationId)
+    .eq('flagged', false)
     .order('created_at', { ascending: false })
     .limit(HISTORY_LIMIT);
   const history: ChatMessage[] = (recent ?? [])
@@ -104,10 +107,18 @@ export async function handleChat(params: ChatParams): Promise<ChatResult | ChatF
     return { error: 'The companion is unavailable right now. Please try again.', status: 502 };
   }
 
-  // 6. Persist the user message + the reply, and touch the conversation.
+  // 6. Persist the user message + the reply, and touch the conversation. Crisis turns
+  //    are flagged so they're excluded from future replay (stored, not replayed).
+  const flagged = outcome.kind === 'crisis';
   const { error: insertErr } = await supabase.from('messages').insert([
-    { conversation_id: conversationId, user_id: userId, role: 'user', content: message },
-    { conversation_id: conversationId, user_id: userId, role: 'assistant', content: outcome.text },
+    { conversation_id: conversationId, user_id: userId, role: 'user', content: message, flagged },
+    {
+      conversation_id: conversationId,
+      user_id: userId,
+      role: 'assistant',
+      content: outcome.text,
+      flagged,
+    },
   ]);
   if (insertErr) {
     console.error('[chat] failed to persist messages:', insertErr);
