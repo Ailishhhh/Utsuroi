@@ -9,15 +9,20 @@
  * The authored source of truth for the content is docs/characters/*.md.
  */
 
+// These are `type` aliases (not `interface`) on purpose: supabase-js requires a table's
+// Row to satisfy `Record<string, unknown>`, which object-literal `type`s do but
+// `interface`s do not. Using an interface silently degrades the typed Supabase client
+// to `never` (queries "work" but lose all type-safety).
+
 /** One few-shot example of how a character responds. */
-export interface SampleExchange {
+export type SampleExchange = {
   user: string;
   reply: string;
-}
+};
 
 /** How a character writes, broken down by mood/context. Fields are optional because
  *  not every character defines every register. */
-export interface SpeechPattern {
+export type SpeechPattern = {
   rhythm?: string;
   verbal_tics?: string;
   happy?: string;
@@ -25,10 +30,10 @@ export interface SpeechPattern {
   teasing?: string;
   something_wrong?: string;
   punctuation?: string;
-}
+};
 
 /** The rich persona detail stored in the `profile` jsonb column. */
-export interface CharacterProfile {
+export type CharacterProfile = {
   age_presented: string;
   backstory: string;
   personality: string[];
@@ -37,10 +42,10 @@ export interface CharacterProfile {
   signature_trait: string;
   sample_exchanges: SampleExchange[];
   safety_notes: string;
-}
+};
 
 /** A full character row as stored in and returned from the database. */
-export interface Character {
+export type Character = {
   id: string;
   slug: string;
   name: string;
@@ -51,4 +56,4 @@ export interface Character {
   is_active: boolean;
   profile: CharacterProfile;
   created_at: string;
-}
+};

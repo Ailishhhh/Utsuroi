@@ -30,6 +30,7 @@
 const RAW = {
   EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
   EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+  EXPO_PUBLIC_API_BASE_URL: process.env.EXPO_PUBLIC_API_BASE_URL,
 } as const;
 
 /**
@@ -53,6 +54,8 @@ function requireEnv(name: keyof typeof RAW): string {
 export interface AppConfig {
   supabaseUrl: string;
   supabaseAnonKey: string;
+  /** Base URL of the Utsuroi backend (e.g. https://utsuroi-delta.vercel.app). */
+  apiBaseUrl: string;
 }
 
 /**
@@ -62,4 +65,6 @@ export interface AppConfig {
 export const config: AppConfig = {
   supabaseUrl: requireEnv('EXPO_PUBLIC_SUPABASE_URL'),
   supabaseAnonKey: requireEnv('EXPO_PUBLIC_SUPABASE_ANON_KEY'),
+  // Trailing slash trimmed so callers can safely do `${apiBaseUrl}/api/chat`.
+  apiBaseUrl: requireEnv('EXPO_PUBLIC_API_BASE_URL').replace(/\/+$/, ''),
 };

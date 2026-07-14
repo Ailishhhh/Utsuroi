@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -18,13 +19,14 @@ import { useTheme, useThemedStyles } from '@/hooks/useTheme';
  * component only renders (Clean Architecture).
  *
  * The theme toggle + sign-out live in a small footer here for now; they move to a
- * dedicated Settings screen in a later milestone. Tapping a card is intentionally a
- * no-op this milestone — opening a character comes later.
+ * dedicated Settings screen in a later milestone. Tapping a card opens that character's
+ * chat.
  */
 export default function Home() {
   const { characters, isLoading, error, reload } = useCharacters();
   const { signOut } = useAuth();
   const { theme } = useTheme();
+  const router = useRouter();
   const styles = useThemedStyles(getStyles);
 
   const [selected, setSelected] = useState<string | null>(null);
@@ -83,7 +85,15 @@ export default function Home() {
                   key={character.id}
                   entering={FadeInDown.delay(index * 60).duration(400)}
                 >
-                  <CharacterCard character={character} />
+                  <CharacterCard
+                    character={character}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/chat/[characterId]',
+                        params: { characterId: character.id, name: character.name },
+                      })
+                    }
+                  />
                 </Animated.View>
               ))}
             </View>
