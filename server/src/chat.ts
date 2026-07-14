@@ -12,6 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ChatMessage } from './ai/gateway';
+import { getMemory, maybeRefreshMemory } from './memory';
 import { buildSystemPrompt, type PersonaLean } from './prompt';
 import { generateSafeReply, type CrisisResource, type SafeReplyOutcome } from './safety';
 import type { Database } from './types/database';
@@ -72,7 +73,10 @@ export async function handleChat(params: ChatParams): Promise<ChatResult | ChatF
     conversationId = created.id;
   }
 
-  // 3. Recent history (fetch newest N, then restore chronological order).
+  // 3. Load the rolling memory summary (if any) for this (user, character).
+  const memory = await getMemory(supabase, userId, characterId);
+
+  // 4. Recent history (fetch newest N, then restore chronological order).
   const { data: recent } = await supabase
     .from('messages')
     .select('role, content')
@@ -83,9 +87,9 @@ export async function handleChat(params: ChatParams): Promise<ChatResult | ChatF
     .reverse()
     .map((m) => ({ role: m.role, content: m.content }));
 
-  // 4. Build the prompt + assemble the message list.
+  // 5. Build the prompt (with memory) + assemble the message list.
   const messages: ChatMessage[] = [
-    { role: 'system', content: buildSystemPrompt(character, { persona }) },
+    { role: 'system', content: buildSystemPrompt(character, { persona, memory: memory?.summary }) },
     ...history,
     { role: 'user', content: message },
   ];
@@ -115,7 +119,19 @@ export async function handleChat(params: ChatParams): Promise<ChatResult | ChatF
     .eq('id', conversationId);
 
   if (outcome.kind === 'crisis') {
+    // Don't fold crisis turns into memory — that's a safety moment, not character history.
     return { kind: 'crisis', reply: outcome.text, resources: outcome.resources };
   }
+
+  // Refresh the rolling memory if enough new messages have accumulated (every N).
+  await maybeRefreshMemory({
+    supabase,
+    userId,
+    characterId,
+    conversationId,
+    currentMemory: memory,
+    characterName: character.name,
+  });
+
   return { kind: 'reply', reply: outcome.text, provider: outcome.provider, model: outcome.model };
 }

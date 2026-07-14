@@ -72,7 +72,7 @@ function formatExamples(character: Character): string {
  */
 export function buildSystemPrompt(
   character: Character,
-  options: { persona?: PersonaLean } = {}
+  options: { persona?: PersonaLean; memory?: string } = {}
 ): string {
   const { profile } = character;
   const relationship = options.persona
@@ -87,11 +87,21 @@ export function buildSystemPrompt(
     `How you speak:\n${formatSpeech(profile.speech_pattern)}`,
     `Your signature: ${profile.signature_trait}`,
     `How you relate to this user: ${relationship}`,
+  ];
+
+  // Memory (M2.10): what the companion remembers about this person, if anything yet.
+  if (options.memory && options.memory.trim()) {
+    sections.push(
+      `What you remember about this person and your history together (weave it in naturally; never recite it back like a list):\n${options.memory.trim()}`
+    );
+  }
+
+  sections.push(
     `Things you would never say:\n${formatList(profile.never_say)}`,
     `Character boundaries to always respect:\n${profile.safety_notes}`,
     `Examples of how you sound (match this voice; never repeat them verbatim):\n${formatExamples(character)}`,
-    `Now continue the conversation as ${character.name}. Always reply in the first person as ${character.name}, and never break character except for the safety rules at the top.`,
-  ];
+    `Now continue the conversation as ${character.name}. Always reply in the first person as ${character.name}, and never break character except for the safety rules at the top.`
+  );
 
   return sections.join('\n\n');
 }
