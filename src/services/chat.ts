@@ -8,9 +8,47 @@
 
 import { config } from '@/lib/config';
 import { supabase } from '@/lib/supabase';
-import type { ChatResponse } from '@/types/chat';
+import type { ChatResponse, HistoryMessage } from '@/types/chat';
 
 export type SendMessageResult = { data: ChatResponse; error: null } | { data: null; error: string };
+
+export type OpenConversationResult =
+  { data: HistoryMessage[]; error: null } | { data: null; error: string };
+
+/**
+ * Opens (find-or-creates) the conversation with a character and returns its displayable
+ * messages — the greeting for a fresh chat, or the full non-crisis history otherwise.
+ */
+export async function openConversation(characterId: string): Promise<OpenConversationResult> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) {
+    return { data: null, error: 'Your session has expired. Please sign in again.' };
+  }
+
+  try {
+    const response = await fetch(`${config.apiBaseUrl}/api/conversation`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ characterId }),
+    });
+
+    const json = (await response.json().catch(() => null)) as {
+      messages?: HistoryMessage[];
+      error?: string;
+    } | null;
+
+    if (!response.ok || !json) {
+      return { data: null, error: json?.error ?? 'Could not open this chat. Please try again.' };
+    }
+    return { data: json.messages ?? [], error: null };
+  } catch {
+    return { data: null, error: "Couldn't reach the server. Check your connection and try again." };
+  }
+}
 
 /** Sends a message to a character and returns the reply (or a crisis payload). */
 export async function sendMessage(

@@ -12,6 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import type { ChatMessage } from './ai/gateway';
+import { getOrCreateConversation } from './conversation';
 import { getMemory, maybeRefreshMemory } from './memory';
 import { buildSystemPrompt, type PersonaLean } from './prompt';
 import { generateSafeReply, type CrisisResource, type SafeReplyOutcome } from './safety';
@@ -52,26 +53,11 @@ export async function handleChat(params: ChatParams): Promise<ChatResult | ChatF
   }
 
   // 2. Load or create the single ongoing conversation for this (user, character).
-  let conversationId: string;
-  const { data: existing } = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('character_id', characterId)
-    .maybeSingle();
-  if (existing) {
-    conversationId = existing.id;
-  } else {
-    const { data: created, error: convErr } = await supabase
-      .from('conversations')
-      .insert({ user_id: userId, character_id: characterId })
-      .select('id')
-      .single();
-    if (convErr || !created) {
-      return { error: 'Could not start the conversation.', status: 500 };
-    }
-    conversationId = created.id;
+  const conversation = await getOrCreateConversation(supabase, userId, characterId);
+  if (!conversation) {
+    return { error: 'Could not start the conversation.', status: 500 };
   }
+  const conversationId = conversation.id;
 
   // 3. Load the rolling memory summary (if any) for this (user, character).
   const memory = await getMemory(supabase, userId, characterId);

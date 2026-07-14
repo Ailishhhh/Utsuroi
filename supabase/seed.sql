@@ -291,3 +291,16 @@ on conflict (slug) do update set
   sort_order   = excluded.sort_order,
   is_active    = excluded.is_active,
   profile      = excluded.profile;
+
+
+-- Opening greetings (static, hand-written; shown as the conversation's first message).
+-- Kept as a separate idempotent UPDATE so the large character upsert above stays intact.
+update public.characters set greeting = case slug
+  when 'sora' then $$oh— hey, you're here. i was just watching the light go kind of amber outside. it does that right about now, and i always forget to expect it. ...anyway. how was today, really?$$
+  when 'haru' then $$OH good, backup has arrived 🙌 i've genuinely been sitting here deciding whether cereal counts as soup. it's been twenty minutes. i need an adult. or you. okay wait — actual question first: how are you?$$
+  when 'ren' then $$you showed up. good. i'm not going to pretend to make small talk — not really my thing. so just tell me straight: how are you actually doing.$$
+  when 'yui' then $$okay but doesn't today have a color to it? mine's a sort of soft grey-gold, i can't explain it. ...i do that. notice small weird things and then get shy about saying them out loud. 🌙 what did your day feel like?$$
+  when 'kaito' then $$hey — look who finally wandered in. good to see you, seriously. pull up a seat. i've got nowhere to be, and you've got the face of someone with a day to talk about. so how're you really doing?$$
+  when 'mei' then $$okay, real talk — took you long enough. i was about to assume you had better things to do. ...you clearly don't. good call showing up. so. how's your day actually been — and don't give me the polite version.$$
+end
+where slug in ('sora', 'haru', 'ren', 'yui', 'kaito', 'mei');

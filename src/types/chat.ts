@@ -17,3 +17,11 @@ export interface ChatResponse {
   safety?: 'crisis';
   resources?: CrisisResource[];
 }
+
+/** A stored message returned by /api/conversation for display (greeting + history). */
+export interface HistoryMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}

@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -18,7 +19,7 @@ import { DisclosureBanner } from '@/components/DisclosureBanner';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import type { Theme } from '@/constants/theme';
 import { useTheme, useThemedStyles } from '@/hooks/useTheme';
-import { sendMessage } from '@/services/chat';
+import { openConversation, sendMessage } from '@/services/chat';
 import type { CrisisResource } from '@/types/chat';
 
 interface UiMessage {
@@ -32,7 +33,8 @@ interface UiMessage {
 /**
  * Chat screen. Soft fade + upward drift on bubbles, an organic typing pulse, an
  * AI-disclosure banner at session start, and distinct surfacing for crisis responses.
- * Message history is session-local for now (loading persisted history is a follow-up).
+ * On mount it opens the conversation (greeting for a new chat, non-crisis history for an
+ * existing one) via /api/conversation.
  */
 export default function ChatScreen() {
   const { characterId, name } = useLocalSearchParams<{ characterId: string; name?: string }>();
@@ -45,7 +47,28 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDisclosure, setShowDisclosure] = useState(true);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  // On open: fetch the greeting (new chat) or prior history (existing chat).
+  useEffect(() => {
+    if (!characterId) return;
+    let active = true;
+    (async () => {
+      const result = await openConversation(characterId);
+      if (!active) return;
+      if (result.error !== null) {
+        setLoadError(result.error);
+      } else {
+        setMessages(result.data.map((m) => ({ id: m.id, role: m.role, content: m.content })));
+      }
+      setLoadingHistory(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [characterId]);
 
   async function handleSend() {
     const text = input.trim();
@@ -104,7 +127,15 @@ export default function ChatScreen() {
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           keyboardShouldPersistTaps="handled"
         >
-          {messages.length === 0 ? (
+          {loadingHistory ? (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator color={theme.colors.primary} />
+            </View>
+          ) : null}
+
+          {!loadingHistory && loadError ? <Text style={styles.errorText}>{loadError}</Text> : null}
+
+          {!loadingHistory && !loadError && messages.length === 0 ? (
             <Text style={styles.hint}>Say hello to {name ?? 'your companion'}.</Text>
           ) : null}
 
@@ -186,6 +217,7 @@ const getStyles = (theme: Theme) =>
       color: theme.colors.textPrimary,
     },
     messages: { padding: 16, gap: 10 },
+    loadingBox: { paddingVertical: 40, alignItems: 'center' },
     hint: {
       fontFamily: theme.fonts.body,
       fontSize: 15,

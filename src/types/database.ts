@@ -23,6 +23,7 @@ type CharacterInsert = {
   sort_order?: number;
   is_active?: boolean;
   profile: CharacterProfile;
+  greeting?: string | null;
   created_at?: string;
 };
 
