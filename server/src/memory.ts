@@ -62,10 +62,15 @@ async function summarize(
       content:
         'You maintain a concise, evolving memory for an AI companion about the person it talks to. ' +
         'Given the previous memory and the recent conversation, write an updated memory capturing what ' +
-        'matters: key facts about the user, how they seem to be feeling, ongoing situations, things they ' +
-        'care about, and anything worth gently following up on later. Write about the user in the third ' +
-        'person. Be concise — a few short sentences up to a short paragraph. Output only the memory text, ' +
-        'with no preamble.',
+        'matters: key facts about the user, how they seem to be feeling day to day, ongoing situations, ' +
+        'and things they care about or are working toward. Write about the user in the third person. ' +
+        'Be concise — a few short sentences up to a short paragraph. Output only the memory text, with ' +
+        'no preamble.\n' +
+        'CRITICAL SAFETY RULE: never record anything about self-harm, suicide, crisis, abuse, or the ' +
+        "user's safety — not from the conversation and not carried over from the previous memory. If any " +
+        'such content appears in the previous memory or the conversation, leave it out of the summary ' +
+        'entirely. Never write that the companion should check on, follow up on, or worry about the ' +
+        "user's safety or wellbeing. If nothing else is worth remembering, return a brief neutral summary.",
     },
     {
       role: 'user',
