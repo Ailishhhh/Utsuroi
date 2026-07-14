@@ -7,12 +7,17 @@
  * avoid monorepo tooling. If the schema changes, update both.
  */
 
-export interface SampleExchange {
+// NOTE: these are `type` aliases (not `interface`) on purpose. supabase-js requires a
+// table's Row to satisfy `Record<string, unknown>`, which object-literal `type`s do but
+// `interface`s do not — using an interface here silently degrades the whole typed schema
+// to `never`.
+
+export type SampleExchange = {
   user: string;
   reply: string;
-}
+};
 
-export interface SpeechPattern {
+export type SpeechPattern = {
   rhythm?: string;
   verbal_tics?: string;
   happy?: string;
@@ -20,9 +25,9 @@ export interface SpeechPattern {
   teasing?: string;
   something_wrong?: string;
   punctuation?: string;
-}
+};
 
-export interface CharacterProfile {
+export type CharacterProfile = {
   age_presented: string;
   backstory: string;
   personality: string[];
@@ -31,9 +36,9 @@ export interface CharacterProfile {
   signature_trait: string;
   sample_exchanges: SampleExchange[];
   safety_notes: string;
-}
+};
 
-export interface Character {
+export type Character = {
   id: string;
   slug: string;
   name: string;
@@ -44,4 +49,4 @@ export interface Character {
   is_active: boolean;
   profile: CharacterProfile;
   created_at: string;
-}
+};
