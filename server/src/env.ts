@@ -17,3 +17,16 @@ export function requireEnv(name: string): string {
   }
   return value;
 }
+
+/**
+ * Returns an optional env var, or undefined if unset/blank. Never throws — for settings
+ * that have a safe default in code (e.g. the crisis-classifier overrides), so absence is
+ * a valid state, not a misconfiguration.
+ */
+export function optionalEnv(name: string): string | undefined {
+  const value = process.env[name];
+  if (value === undefined || value.trim() === '') {
+    return undefined;
+  }
+  return value.trim();
+}

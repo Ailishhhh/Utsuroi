@@ -1,0 +1,14 @@
+{
+  // Build config for emitting compiled CommonJS — used to verify the server compiles for
+  // Vercel's real runtime (NOT an esbuild bundle) and to run the classifier harness:
+  //   npx tsc -p tsconfig.build.json
+  //   node --env-file=.env.local dist/scripts/classifier-harness.js
+  // Inherits module/target/strictness from the base tsconfig; only flips on emit + adds scripts.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "include": ["api/**/*.ts", "src/**/*.ts", "scripts/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

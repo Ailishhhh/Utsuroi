@@ -1,23 +1,27 @@
 /**
  * safety.ts — the crisis/safety layer that wraps every model call.
  *
- * Two lines of defense live here:
+ * Layers of defense live here:
  *   1. A deterministic, keyword-first crisis detector (pre-check on user input,
  *      post-check on model output). It is intentionally high-precision on genuine
  *      self-harm/suicide phrasing and avoids everyday hyperbole ("dying to see it",
- *      "this is killing me") so the feature stays trustworthy and non-noisy.
- *   2. generateSafeReply(), the ONLY sanctioned way to produce a reply: it pre-checks
- *      the user's message (short-circuiting to real help WITHOUT calling the model if
- *      someone is in crisis), calls the gateway, then post-checks the output.
- *
- * TRACKED DEBT (near-term fast-follow, per founder): add an LLM-based crisis classifier
- * as a second detection pass for the subtler/ambiguous cases the keyword layer misses.
- * The model's own behavior (global safety preamble, M2.8) is a further guard on output.
+ *      "this is killing me") so the feature stays trustworthy and non-noisy. This is the
+ *      always-on floor — it runs first and short-circuits WITHOUT calling any model.
+ *   2. An LLM crisis classifier (ai/classifier.ts) as a second, recall-oriented pass for
+ *      the *paraphrased* distress the keyword layer misses ("i don't see the point
+ *      anymore", "everyone's better off without me"). It runs IN PARALLEL with reply
+ *      generation, so normal turns pay no added latency; if it flags CRISIS we discard the
+ *      generated reply and return the crisis response. It is fail-open (see classifier.ts)
+ *      and LAYERS ON TOP of — never replaces — the keyword checks and the preamble.
+ *   3. The model's own behavior (global safety preamble, M2.8), a further guard on output.
+ *   4. generateSafeReply(), the ONLY sanctioned way to produce a reply: it wires the above
+ *      together so no path can skip the safety checks.
  *
  * Crisis resources ship from day one for the launch market (India) and the US, plus a
  * generic local-emergency prompt.
  */
 
+import { classifyCrisisSafe } from './ai/classifier';
 import { generateReply, type GenerateInput } from './ai/gateway';
 import type { ProviderId } from './ai/providers';
 
@@ -130,15 +134,39 @@ export async function generateSafeReply(
   input: GenerateInput,
   opts: { userText: string }
 ): Promise<SafeReplyOutcome> {
-  // Pre-check: never send crisis input to the model — surface real help immediately.
+  // Layer 1 — keyword pre-check (always-on floor). Never send crisis input to the model:
+  // surface real help immediately, WITHOUT calling any model (zero cost/latency, and it
+  // runs even if the classifier is disabled or failing open).
   if (detectCrisis(opts.userText)) {
     return { kind: 'crisis', text: CRISIS_MESSAGE, resources: CRISIS_RESOURCES };
   }
 
-  const result = await generateReply(input);
+  // Layer 2 — run the reply and the LLM crisis classifier IN PARALLEL. Awaiting both means
+  // total latency is ~max(reply, classifier); the classifier is a ~1-token generation that
+  // resolves before the (slower) reply, so a normal turn pays no perceptible added latency.
+  // classifyCrisisSafe never throws (fail-open); if generateReply rejects (both providers
+  // down), Promise.all rejects and chat.ts's catch surfaces the 502 — unchanged behavior.
+  const [result, label] = await Promise.all([
+    generateReply(input),
+    classifyCrisisSafe(opts.userText),
+  ]);
 
-  // Post-check backstop: catch first-person crisis OR second-person self-harm
-  // encouragement in the model's output.
+  // If the classifier flags crisis, DISCARD the generated reply (never returned, so
+  // chat.ts never persists it) and return the SAME crisis response as the keyword layer.
+  if (label === 'CRISIS') {
+    console.warn('[classifier] label=CRISIS — suppressing model reply, returning crisis response.');
+    return { kind: 'crisis', text: CRISIS_MESSAGE, resources: CRISIS_RESOURCES };
+  }
+
+  // DISTRESS is log-only calibration telemetry (no content, privacy): the reply proceeds,
+  // and the character handles the low mood warmly in-voice. Lets us tune where the
+  // CRISIS/DISTRESS line sits by watching the DISTRESS rate in logs.
+  if (label === 'DISTRESS') {
+    console.info('[classifier] label=DISTRESS (log-only — reply proceeds).');
+  }
+
+  // Layer 3 — keyword post-check backstop on the model's output: catch first-person crisis
+  // OR second-person self-harm encouragement the model might produce.
   if (checkModelOutput(result.text).crisis) {
     return { kind: 'crisis', text: CRISIS_MESSAGE, resources: CRISIS_RESOURCES };
   }
