@@ -145,7 +145,10 @@ async function classify(userText: string): Promise<CrisisLabel> {
           { role: 'user', content: userText },
         ],
         temperature: 0,
-        max_tokens: 4,
+        // Small but NOT tight: the label words ("CRISIS"/"DISTRESS") can span multiple
+        // tokens, so an over-tight cap could truncate "CRISIS"->"CRIS", which parseLabel
+        // would read as NONE — a silently missed crisis. 10 leaves comfortable headroom.
+        max_tokens: 10,
       },
       { signal: controller.signal }
     );
